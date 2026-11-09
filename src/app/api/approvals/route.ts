@@ -3,10 +3,23 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number().finite(),
+    z.boolean(),
+    z.null(),
+    z.array(JsonValueSchema),
+    z.record(z.string(), JsonValueSchema)
+  ])
+);
+
 const Input = z.object({
   actionType: z.string().min(2).max(80),
   target: z.string().min(1).max(500),
-  proposedChange: z.record(z.string(), z.unknown()),
+  proposedChange: z.record(z.string(), JsonValueSchema),
   rationale: z.string().min(5).max(2000)
 });
 
