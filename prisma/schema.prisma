@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  NEEDS_REVIEW
+}
+
+enum TaskType {
+  SITE_INVENTORY
+  SEO_AUDIT
+  PERFORMANCE_CHECK
+  AI_COMMAND
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum Severity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  tasks        Task[]   @relation("TaskCreator")
+  approvals    Approval[] @relation("ApprovalReviewer")
+}
+
+model Website {
+  id          String   @id @default(cuid())
+  name        String
+  baseUrl     String   @unique
+  platform    String   @default("Lovable")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  tasks       Task[]
+  findings    Finding[]
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  type        TaskType
+  status      TaskStatus @default(QUEUED)
+  title       String
+  instruction String?
+  result      Json?
+  error       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  websiteId   String?
+  website     Website?   @relation(fields: [websiteId], references: [id])
+  createdById String?
+  createdBy   User?      @relation("TaskCreator", fields: [createdById], references: [id])
+  findings    Finding[]
+}
+
+model Finding {
+  id          String   @id @default(cuid())
+  websiteId   String
+  website     Website @relation(fields: [websiteId], references: [id])
+  taskId      String?
+  task        Task?    @relation(fields: [taskId], references: [id])
+  category    String
+  severity    Severity @default(INFO)
+  title       String
+  detail      String
+  evidence    Json?
+  createdAt   DateTime @default(now())
+}
+
+model Approval {
+  id             String         @id @default(cuid())
+  status         ApprovalStatus @default(PENDING)
+  actionType     String
+  target         String
+  proposedChange Json
+  risk           Severity       @default(MEDIUM)
+  rationale      String
+  createdAt      DateTime       @default(now())
+  reviewedAt     DateTime?
+  reviewerId     String?
+  reviewer       User?          @relation("ApprovalReviewer", fields: [reviewerId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actor      String
+  action     String
+  resource   String
+  details    Json?
+  createdAt  DateTime @default(now())
+}
